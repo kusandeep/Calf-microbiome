@@ -385,7 +385,7 @@ Heatmap(t(as.matrix(heatmap_performance.data[,2:7])), name = "Cor", top_annotati
 
 #Supplementary figures
 
-## Figure S1- PCoA by Farm
+## Figure S1A- PCoA by Farm
 
 ```{r, fig.width = 5, fig.height = 10, fig.width=17}
 xlim1 = 1.1*range(PCOdata[,1])
@@ -397,7 +397,7 @@ legend("topleft", bty="o", pch=19, cex=0.9, pt.cex=0.9, x.intersp=1, col=mycol1,
        legend=levels(calfsmartdata$Farm), title="Farm")
 ```
 
-## Figure S1- PCoA by Sampling date
+## Figure S1B- PCoA by Sampling date
 
 ```{r, fig.width = 5, fig.height = 10, fig.width=17}
 xlim1 = 1.1*range(PCOdata[,1])
