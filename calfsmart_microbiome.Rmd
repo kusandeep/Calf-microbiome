@@ -1,13 +1,13 @@
 ---
 title: "CalfSMART microbiome"
 author: "Sandeep Kumar"
-date: "25/09/2020"
+date: "28/09/2020"
 output: html_document
 ---
 
 This document presents the statistical analyses of the faecal bacterial community profiles and SCFA data generated from calves raised on three different allowances of milk replacer: 10% of initial bodyweight (LA), 20% of initial bodyweight (HA), and ad libitum (ADLIB). Faecal samples were collected at pre-weaning.
 
-All data associated with analyses can be found here: ‘https://github.com/kusandeep/Calf-Smart-microbiome-analysis-using-R’
+All data associated with analyses can be found here: ‘https://github.com/kusandeep/CalfSMART-microbiome’
 
 
 
