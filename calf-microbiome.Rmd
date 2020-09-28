@@ -15,7 +15,7 @@ All data associated with analyses can be found here: ‘https://github.com/kusan
 
 ```{r, echo=FALSE, message=FALSE} 
 #line above needed to hide output of this chunk
-setwd("C:/R_analysis")
+setwd("working-directory")
 library(mixOmics); library(vegan); library(ape); 
 library(vegan);library(ggplot2); library(MASS);
 library(Hmisc);library(corrgram);library(candisc);
