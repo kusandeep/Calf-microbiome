@@ -62,6 +62,7 @@ calfsmartdata$Diet <- factor(calfsmartdata$Diet  , levels=c("LA", "HA", "ADLIB")
 ## Define colours for plots
 ```{r}
 mycol1 = c("red","blue","green4","purple","darkorange", "cyan", "chartreuse")
+mycol2 = c("blue4","blue","steelblue1","lightblue1","firebrick4", "firebrick2", "violet")
 ```
 
 
@@ -403,7 +404,7 @@ legend("topleft", bty="o", pch=19, cex=0.9, pt.cex=0.9, x.intersp=1, col=mycol1,
 xlim1 = 1.1*range(PCOdata[,1])
 xlab1 = paste("1st PCO (",pcopct[1],"%)",sep=""); ylab1 = paste("2nd PCO (",pcopct[2],"%)",sep="")
 plot(PCOdata[,1:2], pch=19, xlim=xlim1,
-     xlab=xlab1, ylab=ylab1, col=mycol1[calfsmartdata$Sampling_date])
+     xlab=xlab1, ylab=ylab1, col=mycol2[calfsmartdata$Sampling_date])
 minor.tick(nx=5,ny=5)
 legend("topleft", bty="o", pch=19, cex=0.9, pt.cex=0.9, x.intersp=1, col=mycol1, horiz=F, 
        legend=levels(calfsmartdata$Sampling_date), title="Sampling date")
