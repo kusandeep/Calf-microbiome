@@ -1,0 +1,443 @@
+---
+title: "Calf-microbiome"
+author: "Sandeep Kumar"
+date: "28/09/2020"
+output: html_document
+---
+
+This document presents the statistical analyses of the faecal bacterial community profiles and SCFA data generated from calves raised on three different allowances of milk replacer: 10% of initial bodyweight (LA), 20% of initial bodyweight (HA), and ad libitum (ADLIB). Faecal samples were collected at pre-weaning.
+
+All data associated with analyses can be found here: ‘https://github.com/kusandeep/Calf-microbiome’
+
+
+
+# Libraries needed for analysis
+
+```{r, echo=FALSE, message=FALSE} 
+#line above needed to hide output of this chunk
+setwd("C:/R_analysis")
+library(mixOmics); library(vegan); library(ape); 
+library(vegan);library(ggplot2); library(MASS);
+library(Hmisc);library(corrgram);library(candisc);
+library(ComplexHeatmap);library(RColorBrewer);library(circlize)
+library(gridExtra);library(tidyverse);library(ggpubr);
+library(rgl);library(rstatix); library(agricolae);
+library(rmarkdown)
+```
+
+# Read/prepare datasets
+## Read main file, define factors and make subset of data
+
+```{r}
+### Bacterial Proportions
+calfsmartdata = read.table("calf-microbiome.csv", header = T, sep = ",", stringsAsFactors = FALSE,check.names=FALSE)
+dim(calfsmartdata)
+
+for (k in 1:5) { calfsmartdata[,k] = as.factor(calfsmartdata[,k]) }
+
+SCFA = colnames(calfsmartdata)[6:19]; length(SCFA)
+Performance = colnames(calfsmartdata)[20:25]; length(Performance)
+Period_diet_all = colnames(calfsmartdata)[26:34]; length(Period_diet_all)
+Period_diet_week = colnames(calfsmartdata)[35:43]; length(Period_diet_week) 
+Bacteria = colnames(calfsmartdata)[44:ncol(calfsmartdata)]; length(Bacteria)
+Period_All_Week = colnames(calfsmartdata)[26:43]; length(Period_All_Week)
+
+```
+
+## Omit data/rows with missing values
+
+SCFA data was not collected from all samples, thus the main calfsmartdata dataset has been subsetted to include only those with SCFA data. 
+
+```{r}
+calfsmartdata_SCFA = droplevels(calfsmartdata[complete.cases(calfsmartdata),]); dim(calfsmartdata)
+dim(calfsmartdata_SCFA)
+```
+
+### Order the factor for Diets
+
+```{r}
+calfsmartdata$Diet <- factor(calfsmartdata$Diet  , levels=c("LA", "HA", "ADLIB"))
+```
+
+## Define colours for plots
+```{r}
+mycol1 = c("red","blue","green4","purple","darkorange", "cyan", "chartreuse")
+```
+
+
+## Choose subset data for analyses
+This will later be needed for PCoA-analsysis
+
+```{r}
+FactorVars = c("Diet","Sampling_date",	"Antibiotic_bef_aft")
+
+respVars = Bacteria; respV = "Bacteria" # choose this or below
+#respVars = SCFA; respV = "SCFA" 
+```
+
+## Subset by sampling date
+This subsettingis needed to compare bacterial communities before and after antibiotic treatmants were administered 
+
+```{r}
+sept28 = subset(calfsmartdata, calfsmartdata$Sampling_date =="2017-09-28")
+oct5 = subset(calfsmartdata, calfsmartdata$Sampling_date == "2017-10-05")
+oct12 = subset(calfsmartdata, calfsmartdata$Sampling_date == "2017-10-12")
+oct19 = subset(calfsmartdata, calfsmartdata$Sampling_date == "2017-10-19")
+oct30 = subset(calfsmartdata, calfsmartdata$Sampling_date == "2017-10-30")
+nov7 = subset(calfsmartdata, calfsmartdata$Sampling_date == "2017-11-07")
+nov16 = subset(calfsmartdata, calfsmartdata$Sampling_date == "2017-11-16")
+```
+
+### Generate dataset of samples before antibiotic treatment was administered
+
+```{r}
+calfsmartdata_befAb = rbind(sept28, oct5, oct12, oct19)  
+calfsmartdata_befAb$Sampling_date<-factor(calfsmartdata_befAb$Sampling_date)
+```
+
+### Generate dataset of samples after antibiotic treatment was administered
+
+```{r}
+calfsmartdata_aftAb = rbind(oct30, nov7, nov16)
+calfsmartdata_aftAb$Sampling_date<-factor(calfsmartdata_aftAb$Sampling_date)
+```
+
+#Figure 1 - Barchart showing relative abundances of family-level taxa
+
+Read data was extracted from Qiime 2.1 as “summarise taxon reads by samples”. Taxon data was converted to relative abundances within samples then mean and standard error of the mean(SEM) per treatment group were generated and plotted as a barchart in Excel.
+
+
+# Alpha diversity statistics
+
+Read data was extracted from Qiime 2.1 as “summarise taxon reads by samples”. Samples with less than 3,000 were omitted from analysis and this dataset was labelled “Reads for alpha diversity.csv
+
+For alpha diversity Qiime 1.9 was used following instruction beow
+
+### Convert otu table from txt format to biom format
+
+biom convert -i otu_table.txt -o otu_table.biom --table-type "OTU table" --to-hdf5
+
+### Perform alpha rarefaction using observed_species, Chao1, Shannon index at a max sampling depth of 3000, using 24 cores
+
+alpha_rarefaction.py -i otu_table.biom -o alpha_3k/ -p alpha_param.txt -m -m otu_mapping.txt -e 3000 -a -O 24
+
+
+## Differences in diversity across diet groups 
+
+Kruskal-Wallis testing was used to test significant difference between diet groups  
+
+```{r}
+alpha_div = read.table("alpha_diversity.txt", header=T,sep="\t",stringsAsFactors = FALSE,check.names=TRUE)
+dim(alpha_div)
+str(alpha_div)
+
+for (k in 1:3) { alpha_div[,k] = as.factor(alpha_div[,k]) } 
+
+alpha_div$Diet <- factor(alpha_div$Diet  , levels=c("LA", "HA", "ADLIB")) ### to order factors
+
+### define colours for plots
+mycol1 = c("red","blue","green4","purple","darkorange", "cyan", "chartreuse")
+
+#### Kruskal-Wallis with pair-wise comparisions
+
+res.kruskal_C <- alpha_div %>% kruskal_test(Chao1.richness ~ Diet)
+res.kruskal_C  
+
+res.kruskal_S <- alpha_div %>% kruskal_test(Shannon.diversity ~ Diet)
+res.kruskal_S
+
+```
+
+### Figure 2 - Faecal bacterial alpha diversity of the milk replacer allowance groups Plot alpha diversity for Chao1 richness and Shannon diversity
+
+Kruskal-wallis and Wilcoxon's testwas used for pairwise comparision between diet groups
+
+```{r}
+
+pwc1 <- alpha_div %>% 
+  wilcox_test(Chao1.richness ~ Diet, p.adjust.method = "bonferroni") 
+
+pwc1 <- pwc1 %>% add_xy_position(x = "Diet")
+
+p1 <- ggboxplot(alpha_div, x = "Diet", y = "Chao1.richness", fill = "Diet") +
+  theme(legend.position = "none") +
+  stat_pvalue_manual(pwc1, hide.ns = TRUE) +
+  labs(y= "Chao1 richness", x = "Diet group",
+       subtitle = get_test_label(res.kruskal_C, detailed = TRUE)) # remove this line to remove heading
+
+pwc2 <- alpha_div %>%  
+  wilcox_test(Shannon.diversity ~ Diet, p.adjust.method = "bonferroni") 
+
+pwc2 <- pwc2 %>% add_xy_position(x = "Diet")
+
+p2 <-  ggboxplot(alpha_div, x = "Diet", y = "Shannon.diversity", fill = "Diet") + 
+  theme(legend.position = "none") +
+  stat_pvalue_manual(pwc2, hide.ns = TRUE) +
+  labs(y= "Shannon diversity", x = "Diet group",  
+       subtitle = get_test_label(res.kruskal_S, detailed = TRUE)) # remove this line to remove heading
+
+grid.arrange(p2, p1, ncol=2)
+```
+
+
+
+# ANOSIM analysis
+Use appropriate factor(eg. Diet, Farm etc.) for different group observations
+
+```{r}
+anosim(calfsmartdata[,respVars], calfsmartdata$Diet)
+anosim(calfsmartdata[,respVars], calfsmartdata$Farm)
+anosim(calfsmartdata[,respVars], calfsmartdata$Sampling_date)
+anosim(calfsmartdata[,respVars], calfsmartdata$Antibiotic_bef_aft)
+anosim(calfsmartdata_befAb[,respVars], calfsmartdata_befAb$Diet)
+anosim(calfsmartdata_befAb[,respVars], calfsmartdata_befAb$Farm)
+anosim(calfsmartdata_befAb[,respVars], calfsmartdata_befAb$Sampling_date)
+anosim(calfsmartdata_aftAb[,respVars], calfsmartdata_aftAb$Diet)
+anosim(calfsmartdata_aftAb[,respVars], calfsmartdata_aftAb$Farm)
+anosim(calfsmartdata_aftAb[,respVars], calfsmartdata_aftAb$Sampling_date)
+
+```
+
+
+## Beta dispersion check
+
+```{r}
+permutest(betadisper(vegdist(calfsmartdata[,respVars]), calfsmartdata$Diet, type = "median"))
+permutest(betadisper(vegdist(calfsmartdata[,respVars]), calfsmartdata$Farm, type = "median"))
+permutest(betadisper(vegdist(calfsmartdata[,respVars]), calfsmartdata$Sampling_date, type = "median"))
+permutest(betadisper(vegdist(calfsmartdata[,respVars]), calfsmartdata$Antibiotic_bef_aft, type = "median"))
+permutest(betadisper(vegdist(calfsmartdata_befAb[,respVars]), calfsmartdata_befAb$Diet, type = "median"))
+permutest(betadisper(vegdist(calfsmartdata_befAb[,respVars]), calfsmartdata_befAb$Farm, type = "median"))
+permutest(betadisper(vegdist(calfsmartdata_befAb[,respVars]), calfsmartdata_befAb$Sampling_date, type = "median"))
+permutest(betadisper(vegdist(calfsmartdata_aftAb[,respVars]), calfsmartdata_aftAb$Diet, type = "median"))
+permutest(betadisper(vegdist(calfsmartdata_aftAb[,respVars]), calfsmartdata_aftAb$Farm, type = "median"))
+permutest(betadisper(vegdist(calfsmartdata_aftAb[,respVars]), calfsmartdata_aftAb$Sampling_date, type = "median"))
+```
+
+# Beta diversity 
+
+```{r, fig.show='hide'}
+# Compute (Bray-Curtis or Euclidean) distance between reps
+if (respV == "Bacteria") { distObs <- vegdist(calfsmartdata[,respVars], method="bray") } 
+as.matrix(distObs)[1:5,1:5]
+
+### PCoA 
+Calf.pco <- pcoa(distObs)
+summary(Calf.pco$values) # check for negative eigenvalues
+barplot(Calf.pco$values$Relative_eig[1:5]) # to check where is the maxim variation
+pcopct = round(100*Calf.pco$values[,3],2)
+pcokeep = length(pcopct[pcopct>10]) # keep PCs with >10% 
+if (pcokeep<2) { pcokeep=2 }
+Yid = as.numeric(calfsmartdata$Diet); table(Yid) 
+PCOdata = data.frame(Calf.pco$vectors[,1:10],Yid,calfsmartdata[,FactorVars]); head(PCOdata)
+```
+
+## Figure 3 - PCoA of faecal bacterial communities (graph using values from above)
+
+```{r, fig.width = 5, fig.height = 10, fig.width=17}
+xlim1 = 1.1*range(PCOdata[,1])
+xlab1 = paste("1st PCO (",pcopct[1],"%)",sep=""); ylab1 = paste("2nd PCO (",pcopct[2],"%)",sep="")
+plot(PCOdata[,1:2], pch=19, xlim=xlim1,
+     xlab=xlab1, ylab=ylab1, col=mycol1[calfsmartdata$Diet])
+minor.tick(nx=5,ny=5)
+legend("topleft", bty="o", pch=19, cex=0.9, pt.cex=0.9, x.intersp=1, col=mycol1, horiz=F, 
+       legend=levels(calfsmartdata$Diet), title="Diet")
+
+```
+
+
+
+# Canonical correlation using spls function from mixOmics
+
+```{r}
+#### For Bacteria vs intakes
+X <- calfsmartdata[,Bacteria]
+dim(X)
+Y <- calfsmartdata[,Period_All_Week]
+dim(Y)
+
+####FOR SCFA Vs bacteria
+X_SCFA <- calfsmartdata_SCFA[,Bacteria]
+Y_SCFA <- calfsmartdata_SCFA[,SCFA]
+
+
+####FOR performance data Vs bacteria
+X_perf <- calfsmartdata[,Bacteria]
+Y_perf <- calfsmartdata[,Performance]
+
+####FOR SCFA Vs intakes
+X_SCFA_int <- calfsmartdata_SCFA[,SCFA]
+Y_SCFA_int <- calfsmartdata_SCFA[,Period_All_Week]
+
+###FOR SCFA Vs performance 
+X_SCFA_perf <- calfsmartdata_SCFA[,SCFA]
+Y_SCFA_perf <- calfsmartdata_SCFA[,Performance]
+
+```
+
+## spls mode of canonical correlation
+
+
+```{r}
+calfsmart.res <- spls(X, Y, ncomp = 3, mode="canonical")
+calfsmart_SCFA.res <- spls(X_SCFA, Y_SCFA, ncomp = 3, mode="canonical")
+calfsmart_perf.res <- spls(X_perf, Y_perf, ncomp = 3, mode="canonical")
+calfsmart_SCFA_int.res <- spls(X_SCFA_int, Y_SCFA_int, ncomp = 3, mode="canonical")
+calfsmart_SCFA_perf.res <- spls(X_SCFA_perf, Y_SCFA_perf, ncomp = 3, mode="canonical")
+```
+
+
+## Generate CIM values and plot
+
+```{r, fig.show='hide', fig.width = 5, fig.height = 10, fig.width=17}
+
+cim_periods <- cim(calfsmart.res, margins = c(16, 16), threshold = 0.30, transpose = T,
+                  row.cex = 0.8, col.cex = 0.8, keysize=c(1,0.7))
+
+cim_SCFA <- cim(calfsmart_SCFA.res, margins = c(16, 16),threshold = 0.25, transpose = T,
+                   row.cex = 0.8, col.cex = 0.8, keysize=c(1,0.7))
+
+cim_Performance <- cim(calfsmart_perf.res, margins = c(16, 16), threshold = 0.25, transpose = T,
+                   row.cex = 0.8, col.cex = 0.8, keysize=c(1,0.7))
+
+cim_SCFA_int <- cim(calfsmart_SCFA_int.res, margins = c(16, 16), threshold = 0.30, transpose = T,
+                  row.cex = 1.2, col.cex = 1.2, keysize=c(1,0.7))
+
+cim_SCFA_perf <- cim(calfsmart_SCFA_perf.res, margins = c(16, 16), threshold = 0.30, transpose = T,
+                  row.cex = 1.2, col.cex = 1.2, keysize=c(1,0.7))
+```
+
+Print/save CIM values for from above and pest abundance data by different diet groups for heatmap generation.
+
+
+```{r}
+
+#write.table(cim_periods$mat,file="bacteria_vs_periods.txt",sep="\t") #Period_All_Week
+#write.table(cim_SCFA$mat,file="bacteria_vs_scfa.txt",sep="\t") #SCFA
+#write.table(cim_Performance$mat,file="bacteria_vs_performance.txt",sep="\t") #Performance
+#write.table(cim_SCFA_int$mat,file="SCFA_vs_intake.txt",sep="\t")
+#write.table(cim_SCFA_perf$mat,file="SCFA_vs_performance.txt",sep="\t")
+```
+Modified files have been provided for convenience 
+
+
+
+#Heatmaps using CIM values and abundance; figure 4, 5 and 6
+
+CIM values form above were used to generate heatmaps with bacterial abundance 
+
+
+## Figure 4 - Correlation heatmap between bacterial community composition and calf dietary intakes
+
+```{r, fig.width = 5, fig.height = 10, fig.width=15}
+
+heatmap_periods.data <- read.table("bacteria_vs_periods.txt",header=T,sep="\t",stringsAsFactors = FALSE,check.names=FALSE)
+#using check.names=FALSE can keep the column name as it but then can't use $ function to detect the column
+rownames(heatmap_periods.data) <- heatmap_periods.data[,1] # keep the taxon name as it is. No space replaced by .
+
+#define colour
+col_fun = colorRamp2(c(0, 1,3,7, 13), c("white", "springgreen","springgreen2","springgreen3","springgreen4"))
+
+####Print heatmap
+#pdf("heatmap_fig4.pdf", height=6, width=12, pointsize=6)
+column_ha = HeatmapAnnotation(LA = heatmap_periods.data[,20], HA = heatmap_periods.data[,21],  ADLIB = heatmap_periods.data[,22],
+                              col = list(LA = col_fun, HA = col_fun, ADLIB = col_fun), show_legend = T,  show_annotation_name = T)
+Heatmap(t(as.matrix(heatmap_periods.data[,2:19])), name = "Cor", top_annotation = column_ha, column_names_gp = gpar(fontsize = 8),
+        row_names_gp = gpar(fontsize = 9), show_heatmap_legend = T)
+```
+
+## Figure 5 - Correlation heatmap between bacterial community composition and SCFA profiles
+
+```{r, fig.width = 5, fig.height = 10, fig.width=15}
+heatmap_scfa.data <- read.table("bacteria_vs_scfa.txt",header=T,sep="\t",stringsAsFactors = FALSE,check.names=FALSE)
+#using check.names=FALSE can keep the column name as it but then can't use $ function to detect the column
+rownames(heatmap_scfa.data) <- heatmap_scfa.data[,1] # keep the taxon name as it is. No space replaced by .
+
+#define colour
+col_fun = colorRamp2(c(0, 1,3,7, 13), c("white", "springgreen","springgreen2","springgreen3","springgreen4"))
+
+####Print heatmap
+#pdf("heatmap_fig5.pdf", height=6, width=12, pointsize=6)
+column_ha = HeatmapAnnotation(LA = heatmap_scfa.data[,16], HA = heatmap_scfa.data[,17],  ADLIB = heatmap_scfa.data[,18],
+                              col = list(LA = col_fun, HA = col_fun, ADLIB = col_fun), show_legend = T,  show_annotation_name = T)
+Heatmap(t(as.matrix(heatmap_scfa.data[,2:15])), name = "Cor", top_annotation = column_ha, column_names_gp = gpar(fontsize = 8), row_names_gp = gpar(fontsize = 9), show_heatmap_legend = T)
+
+```
+
+## Figure 6 - Correlation heatmap between bacterial community composition and calf performance data
+
+```{r, fig.width = 5, fig.height = 10, fig.width=15}
+heatmap_performance.data <- read.table("bacteria_vs_performance.txt",header=T,sep="\t",stringsAsFactors = FALSE,check.names=FALSE)
+#using check.names=FALSE can keep the column name as it but then can't use $ function to detect the column
+rownames(heatmap_performance.data) <- heatmap_performance.data[,1] # keep the taxon name as it is. No space replaced by .
+
+#define colour
+col_fun = colorRamp2(c(0, 1,3,7, 13), c("white", "springgreen","springgreen2","springgreen3","springgreen4"))
+
+####Print heatmap
+#pdf("heatmap_fig6.pdf", height=6, width=12, pointsize=6)
+column_ha = HeatmapAnnotation(LA = heatmap_performance.data[,8], HA = heatmap_performance.data[,9],  ADLIB = heatmap_performance.data[,10],
+                              col = list(LA = col_fun, HA = col_fun, ADLIB = col_fun), show_legend = T,  show_annotation_name = T)
+Heatmap(t(as.matrix(heatmap_performance.data[,2:7])), name = "Cor", top_annotation = column_ha, column_names_gp = gpar(fontsize = 8),
+        row_names_gp = gpar(fontsize = 9), show_heatmap_legend = T)
+
+```
+
+#Supplementary figures
+
+## Figure S1- PCoA by Farm
+
+```{r, fig.width = 5, fig.height = 10, fig.width=17}
+xlim1 = 1.1*range(PCOdata[,1])
+xlab1 = paste("1st PCO (",pcopct[1],"%)",sep=""); ylab1 = paste("2nd PCO (",pcopct[2],"%)",sep="")
+plot(PCOdata[,1:2], pch=19, xlim=xlim1,
+     xlab=xlab1, ylab=ylab1, col=mycol1[calfsmartdata$Farm])
+minor.tick(nx=5,ny=5)
+legend("topleft", bty="o", pch=19, cex=0.9, pt.cex=0.9, x.intersp=1, col=mycol1, horiz=F, 
+       legend=levels(calfsmartdata$Farm), title="Farm")
+```
+
+## Figure S1- PCoA by Sampling date
+
+```{r, fig.width = 5, fig.height = 10, fig.width=17}
+xlim1 = 1.1*range(PCOdata[,1])
+xlab1 = paste("1st PCO (",pcopct[1],"%)",sep=""); ylab1 = paste("2nd PCO (",pcopct[2],"%)",sep="")
+plot(PCOdata[,1:2], pch=19, xlim=xlim1,
+     xlab=xlab1, ylab=ylab1, col=mycol1[calfsmartdata$Sampling_date])
+minor.tick(nx=5,ny=5)
+legend("topleft", bty="o", pch=19, cex=0.9, pt.cex=0.9, x.intersp=1, col=mycol1, horiz=F, 
+       legend=levels(calfsmartdata$Sampling_date), title="Sampling date")
+```
+
+## Figure S2 Variation in calf milk replacer intakes
+
+````{r}
+ggplot(calfsmartdata, aes(x=calfsmartdata$Diet, y=calfsmartdata$`MR (DM intake, % of initial BW)`, fill = Diet)) + 
+  geom_boxplot(width = 0.4, show.legend = FALSE) + geom_jitter(alpha = 1/2, width = 0.15) +
+  theme_classic() + theme(legend.position = "none") + labs(y= "MR (DM intake, % of initial BW)", x = "Diet group")
+```
+
+
+## Figure S3 - Correlation heatmap between SCFA profiles and calf dietary intakes
+
+```{r}
+heatmap_scfa_intake.data <- read.table("SCFA_vs_intake.txt",header=T,sep="\t", stringsAsFactors = FALSE,check.names=FALSE)
+rownames(heatmap_scfa_intake.data) <- heatmap_scfa_intake.data[,1]
+####Print heatmap
+#pdf("Figure_S3.pdf", height=6, width=8, pointsize=6)
+Heatmap(t(as.matrix(heatmap_scfa_intake.data[,2:19])), name = "Cor", column_names_gp = gpar(fontsize = 8),
+        row_names_gp = gpar(fontsize = 8), show_heatmap_legend = T)
+```                  
+                  
+## Figure S4 - Correlation heatmap between SCFA profiles and calf performance data
+
+```{r, fig.width = 5, fig.height = 7, fig.width=10}
+heatmap_scfa_performance.data <- read.table("SCFA_vs_performance.txt",header=T,sep="\t", stringsAsFactors = FALSE,check.names=FALSE)
+rownames(heatmap_scfa_performance.data) <- heatmap_scfa_performance.data[,1]
+####Print heatmap
+#pdf("Figure_S4.pdf", height=6, width=6, pointsize=6)
+Heatmap(t(as.matrix(heatmap_scfa_performance.data[,2:15])), name = "Cor", column_names_gp = gpar(fontsize = 9),
+        row_names_gp = gpar(fontsize = 9), show_heatmap_legend = T)
+```  
+
+
