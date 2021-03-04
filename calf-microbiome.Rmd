@@ -107,6 +107,59 @@ calfsmartdata_aftAb$Sampling_date<-factor(calfsmartdata_aftAb$Sampling_date)
 
 Read data was extracted from Qiime 2.1 as “summarise taxon reads by samples”. Taxon data was converted to relative abundances within samples then mean and standard error of the mean(SEM) per treatment group were generated and plotted as a barchart in Excel.
 
+###Shapiro test to check the data normality
+
+shapiro.test(calfsmartdata_SCFA$`Acetic acid (mM)`)
+shapiro.test(calfsmartdata_SCFA$`Propionic acid (mM)`)
+shapiro.test(calfsmartdata_SCFA$`Butyric acid (mM)`)
+shapiro.test(calfsmartdata_SCFA$`Isobutyric acid (mM)`)
+shapiro.test(calfsmartdata_SCFA$`Valeric acid (mM)`)
+shapiro.test(calfsmartdata_SCFA$`Isovaleric acid (mM)`)
+shapiro.test(calfsmartdata_SCFA$`Total SCFA (mM)`)
+shapiro.test(calfsmartdata_SCFA$`Acetic acid (%)`)
+shapiro.test(calfsmartdata_SCFA$`Propionic acid (%)`)
+shapiro.test(calfsmartdata_SCFA$`Butyric acid (%)`)
+shapiro.test(calfsmartdata_SCFA$`Isobutyric acid (%)`)
+shapiro.test(calfsmartdata_SCFA$`Valeric acid (%)`)
+shapiro.test(calfsmartdata_SCFA$`Isovaleric acid (%)`)
+shapiro.test(calfsmartdata_SCFA$`Acetate:Propionate`)
+
+
+
+#### Kruskal-Wallis 
+
+calfsmartdata_SCFA %>% kruskal_test(`Acetic acid (mM)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Propionic acid (mM)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Butyric acid (mM)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Isobutyric acid (mM)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Valeric acid (mM)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Isovaleric acid (mM)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Total SCFA (mM)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Acetic acid (%)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Propionic acid (%)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Butyric acid (%)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Isobutyric acid (%)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Valeric acid (%)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Isovaleric acid (%)` ~ Diet)
+calfsmartdata_SCFA %>% kruskal_test(`Acetate:Propionate` ~ Diet)
+
+
+#####Fitting and testing PERANOVA using permutation tests
+
+summary(aovp(calfsmartdata_SCFA$`Acetic acid (mM)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Propionic acid (mM)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Butyric acid (mM)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Isobutyric acid (mM)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Valeric acid (mM)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Isovaleric acid (mM)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Total SCFA (mM)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Acetic acid (%)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Propionic acid (%)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Butyric acid (%)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Isobutyric acid (%)`~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Valeric acid (%)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Isovaleric acid (%)` ~ calfsmartdata_SCFA$Diet))
+summary(aovp(calfsmartdata_SCFA$`Acetate:Propionate` ~ calfsmartdata_SCFA$Diet))
 
 # Alpha diversity statistics
 
@@ -236,14 +289,19 @@ PCOdata = data.frame(Calf.pco$vectors[,1:10],Yid,calfsmartdata[,FactorVars]); he
 ## Figure 3 - PCoA of faecal bacterial communities (graph using values from above)
 
 ```{r, fig.width = 5, fig.height = 10, fig.width=17}
+mycol2 = c("red","green4","blue")
 xlim1 = 1.1*range(PCOdata[,1])
 xlab1 = paste("1st PCO (",pcopct[1],"%)",sep=""); ylab1 = paste("2nd PCO (",pcopct[2],"%)",sep="")
 plot(PCOdata[,1:2], pch=19, xlim=xlim1,
-     xlab=xlab1, ylab=ylab1, col=mycol1[calfsmartdata$Diet])
+     xlab=xlab1, ylab=ylab1, col=mycol2[calfsmartdata$Diet])
 minor.tick(nx=5,ny=5)
-legend("topleft", bty="o", pch=19, cex=0.9, pt.cex=0.9, x.intersp=1, col=mycol1, horiz=F, 
+legend("topleft", bty="o", pch=19, cex=0.9, pt.cex=0.9, x.intersp=1, col=mycol2, horiz=F, 
        legend=levels(calfsmartdata$Diet), title="Diet")
-
+par(xpd=FALSE)
+dataEllipse(PCOdata[,1],PCOdata[,2],as.factor(calfsmartdata$Diet), col=mycol2,
+            center.cex=0,levels=0.70, ellipse.label="",group.labels="",
+            plot.points = FALSE,
+            lty=2, fill=T, fill.alpha=0.01, add=T)
 ```
 
 
@@ -329,6 +387,8 @@ CIM values form above were used to generate heatmaps with bacterial abundance
 
 
 ## Figure 4 - Correlation heatmap between bacterial community composition and calf dietary intakes
+# This figure has now moved to supplementary and now replaced by network graph
+# All network graphs need to be open in Cytoscape for vidualisation and to export in PDF https://cytoscape.org/
 
 ```{r, fig.width = 5, fig.height = 10, fig.width=15}
 
@@ -345,6 +405,20 @@ column_ha = HeatmapAnnotation(LA = heatmap_periods.data[,20], HA = heatmap_perio
                               col = list(LA = col_fun, HA = col_fun, ADLIB = col_fun), show_legend = T,  show_annotation_name = T)
 Heatmap(t(as.matrix(heatmap_periods.data[,2:19])), name = "Cor", top_annotation = column_ha, column_names_gp = gpar(fontsize = 8),
         row_names_gp = gpar(fontsize = 9), show_heatmap_legend = T)
+
+####### Figure 4A
+# correlation cut off = 0.5
+net.result <- network(t(as.matrix(heatmap_periods.data[,2:19])), comp = 1:3, cutoff = 0.5,
+                      col.names = colnames(t(as.matrix(heatmap_periods.data[,2:19]))),
+                      row.names = rownames(t(as.matrix(heatmap_periods.data[,2:19]))) ,
+                      color.node = c("mistyrose", "lightcyan"),
+                      shape.node = c("rectangle", "circle"),
+                      color.edge = c("blue", "red"),
+                      lty.edge = "solid", lwd.edge = 1,
+                      show.edge.labels = FALSE, interactive = F)   
+
+write.graph(net.result$gR, file = "network_fig4a.gml", format = "gml")
+
 ```
 
 ## Figure 5 - Correlation heatmap between bacterial community composition and SCFA profiles
@@ -363,6 +437,18 @@ column_ha = HeatmapAnnotation(LA = heatmap_scfa.data[,16], HA = heatmap_scfa.dat
                               col = list(LA = col_fun, HA = col_fun, ADLIB = col_fun), show_legend = T,  show_annotation_name = T)
 Heatmap(t(as.matrix(heatmap_scfa.data[,2:15])), name = "Cor", top_annotation = column_ha, column_names_gp = gpar(fontsize = 8), row_names_gp = gpar(fontsize = 9), show_heatmap_legend = T)
 
+####### Figure 4B
+# correlation cut off = 0.5
+net.result <- network(t(as.matrix(heatmap_scfa.data[,2:15])), comp = 1:3, cutoff = 0.5,
+                      col.names = colnames(t(as.matrix(heatmap_scfa.data[,2:15]))),
+                      row.names = rownames(t(as.matrix(heatmap_scfa.data[,2:15]))) ,
+                      color.node = c("mistyrose", "lightcyan"),
+                      shape.node = c("rectangle", "circle"),
+                      color.edge = c("blue", "red"),
+                      lty.edge = "solid", lwd.edge = 1,
+                      show.edge.labels = FALSE, interactive = F)   
+
+write.graph(net.result$gR, file = "network_fig4b.gml", format = "gml")
 ```
 
 ## Figure 6 - Correlation heatmap between bacterial community composition and calf performance data
@@ -382,6 +468,18 @@ column_ha = HeatmapAnnotation(LA = heatmap_performance.data[,8], HA = heatmap_pe
 Heatmap(t(as.matrix(heatmap_performance.data[,2:7])), name = "Cor", top_annotation = column_ha, column_names_gp = gpar(fontsize = 8),
         row_names_gp = gpar(fontsize = 9), show_heatmap_legend = T)
 
+####### Figure 4B
+# correlation cut off = 0.3
+net.result <- network(t(as.matrix(heatmap_performance.data[,2:7])), comp = 1:3, cutoff = 0.3,
+                      col.names = colnames(t(as.matrix(heatmap_performance.data[,2:7]))),
+                      row.names = rownames(t(as.matrix(heatmap_performance.data[,2:7]))) ,
+                      color.node = c("mistyrose", "lightcyan"),
+                      shape.node = c("rectangle", "circle"),
+                      color.edge = c("blue", "red"),
+                      lty.edge = "solid", lwd.edge = 1,
+                      show.edge.labels = FALSE, interactive = F)   
+
+write.graph(net.result$gR, file = "network_fig4c.gml", format = "gml")
 ```
 
 #Supplementary figures
