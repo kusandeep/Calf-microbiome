@@ -209,7 +209,7 @@ Kruskal-wallis and Wilcoxon's testwas used for pairwise comparision between diet
 ```{r}
 
 pwc1 <- alpha_div %>% 
-  wilcox_test(Chao1.richness ~ Diet, p.adjust.method = "bonferroni") 
+  wilcox_test(Chao1.richness ~ Diet, p.adjust.method = "none") 
 
 pwc1 <- pwc1 %>% add_xy_position(x = "Diet")
 
@@ -220,7 +220,7 @@ p1 <- ggboxplot(alpha_div, x = "Diet", y = "Chao1.richness", fill = "Diet") +
        subtitle = get_test_label(res.kruskal_C, detailed = TRUE)) # remove this line to remove heading
 
 pwc2 <- alpha_div %>%  
-  wilcox_test(Shannon.diversity ~ Diet, p.adjust.method = "bonferroni") 
+  wilcox_test(Shannon.diversity ~ Diet, p.adjust.method = "none") 
 
 pwc2 <- pwc2 %>% add_xy_position(x = "Diet")
 
@@ -289,16 +289,16 @@ PCOdata = data.frame(Calf.pco$vectors[,1:10],Yid,calfsmartdata[,FactorVars]); he
 ## Figure 3 - PCoA of faecal bacterial communities (graph using values from above)
 
 ```{r, fig.width = 5, fig.height = 10, fig.width=17}
-mycol2 = c("red","green4","blue")
+mycol3 = c("red","green4","blue")
 xlim1 = 1.1*range(PCOdata[,1])
 xlab1 = paste("1st PCO (",pcopct[1],"%)",sep=""); ylab1 = paste("2nd PCO (",pcopct[2],"%)",sep="")
 plot(PCOdata[,1:2], pch=19, xlim=xlim1,
-     xlab=xlab1, ylab=ylab1, col=mycol2[calfsmartdata$Diet])
+     xlab=xlab1, ylab=ylab1, col=mycol3[calfsmartdata$Diet])
 minor.tick(nx=5,ny=5)
-legend("topleft", bty="o", pch=19, cex=0.9, pt.cex=0.9, x.intersp=1, col=mycol2, horiz=F, 
+legend("topleft", bty="o", pch=19, cex=0.9, pt.cex=0.9, x.intersp=1, col=mycol3, horiz=F, 
        legend=levels(calfsmartdata$Diet), title="Diet")
 par(xpd=FALSE)
-dataEllipse(PCOdata[,1],PCOdata[,2],as.factor(calfsmartdata$Diet), col=mycol2,
+dataEllipse(PCOdata[,1],PCOdata[,2],as.factor(calfsmartdata$Diet), col=mycol3,
             center.cex=0,levels=0.70, ellipse.label="",group.labels="",
             plot.points = FALSE,
             lty=2, fill=T, fill.alpha=0.01, add=T)
